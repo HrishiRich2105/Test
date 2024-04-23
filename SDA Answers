@@ -1,0 +1,140 @@
+--Question 1
+--The implementation looks mostly fine, but there's a small issue with the releaseStorage function. It's setting the storage value to -1 regardless of whether it was 1 or not. Here's the improved version:
+local function releaseStorage(player)
+
+    player:setStorageValue(1000, 0) -- Change -1 to 0 to reset the value
+
+end
+function onLogout(player)
+    if player:getStorageValue(1000) == 1 then
+
+        addEvent(releaseStorage, 1000, player)
+     end
+     return true
+
+end
+--This way, when the player logs out, the releaseStorage function will only be called if the storage value is 1, and it will reset the value to 0.
+
+--Question 2
+--Here's an improved version of the printSmallGuildNames function:
+    function printSmallGuildNames(memberCount)
+    
+        -- Prepare the SQL query with placeholder for memberCount
+    
+        local selectGuildQuery = string.format("SELECT name FROM guilds WHERE max_members < %d;", memberCount)
+        -- Execute the query and store the result
+        local resultId = db.storeQuery(selectGuildQuery)
+        -- Check if the query returned a valid result
+        if resultId ~= nil then
+          -- Iterate through the result set
+        repeat
+    
+            local guildName = result.getString("name") -- Get the name of the guild
+            print(guildName) -- Print the guild name
+            until not result.next() -- Move to the next result, exit loop when no more results
+            result.free() -- Free the result set
+         else
+            print("No small guilds found.") -- If no small guilds found, print a message
+    
+        end
+    end
+    --This version includes error handling to check if the query returned a valid result set and iterates through the result set to print each guild name. It also properly frees the result set after use to prevent memory leaks.
+
+    --Question 3.
+ --Improving both the name and implementation, here's a revised version:
+function removePlayerFromParty(playerId, playerName)
+
+    local player = Player(playerId)
+
+    if not player then
+
+        return -- Player not found
+
+    end
+local party = player:getParty()
+
+    if not party then
+
+        return -- Player is not in a party
+
+    end
+local members = party:getMembers()
+
+    for _, member in ipairs(members) do
+
+        if member:getName() == playerName then
+
+            party:removeMember(member)
+
+            return -- Found and removed the member, exiting the loop
+
+        end
+    end
+end
+--This implementation improves the method's clarity by explicitly stating its purpose and follows best practices such as early exits to improve readability and efficiency. Additionally, it uses ipairs for iterating over the members of the party.
+
+--Question 4 
+--To fix the memory leak issue in the addItemToPlayer method, you need to ensure that any dynamically allocated memory is properly deallocated. In this case, the memory allocated for player needs to be deleted if it's dynamically allocated within the function.
+--Here's the corrected implementation:
+
+void Game::addItemToPlayer(const std::string& recipient, uint16_t itemId)
+{
+
+    Player* player = g_game.getPlayerByName(recipient);
+
+    bool playerCreated = false;
+
+
+    if (!player) {
+
+        player = new Player(nullptr);
+
+        if (!IOLoginData::loadPlayerByName(player, recipient)) {
+
+            delete player; // Deallocate memory if loading fails
+
+            return;
+
+        }
+
+        playerCreated = true; // Marking player as created dynamically
+
+    }
+
+
+    Item* item = Item::CreateItem(itemId);
+
+    if (!item) {
+
+        if (playerCreated) {
+
+            delete player; // Deallocate memory if item creation fails
+
+        }
+
+        return;
+
+    }
+
+
+    g_game.internalAddItem(player->getInbox(), item, INDEX_WHEREEVER, FLAG_NOLIMIT);
+
+
+    if (player->isOffline()) {
+
+        IOLoginData::savePlayer(player);
+
+    }
+
+
+    // Deallocate memory if player was created dynamically
+
+    if (playerCreated) {
+
+        delete player;
+
+    }
+
+}
+--This implementation ensures that if a Player object is created dynamically within the function due to being not found, it is properly deallocated before returning, whether or not the item creation succeeds. This prevents memory leaks by ensuring all allocated memory is properly released.
+
